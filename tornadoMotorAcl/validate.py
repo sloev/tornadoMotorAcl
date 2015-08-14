@@ -23,6 +23,9 @@ DB_PERMISSIONS = "acl_permissions"
 class AclSyntaxError(Exception):
     pass
 
+def check_permissions(func_permissions, db_permissions):
+    return False not in [x in db_permissions for x in func_permissions]
+
 def acl_authorize(*permission_pairs):
     '''authorizes funcs in tornado requests using motor and mongodb
     takes it for granted that a motor mungo db is accessible through self.db
@@ -35,11 +38,32 @@ def acl_authorize(*permission_pairs):
         or
         [("read", "write", "news"), ("delete", "update", "money")]
     '''
+
     def wrap(func):
         def wrapped_f(self, *args, **kwargs):
             print "pp:",permission_pairs
             print "inside wrapped_f",  args, kwargs
-            print self.db
+            query = {}
+            _id = self.current_user._id
+
+            cursor = self.db[DB_PERMISSIONS].find({})
+            permission_dict = yield cursor.to_list(None)
+            print "perm dict", permission_dict
+
+            db_permissions = []
+            cursor = self.db[DB_GROUPS].find({"_id":_id})
+            while (yield cursor.fetch_next):
+                group = cursor.next_object()
+                for p in group.permissions:
+                    #((1,2,3), 2)
+                    perm_names = [permission_dict[x] for x in p[0]]
+                    doc = yield self.db[DB_RESOURCES].find_one({"_id":p[1]})
+                    if not doc:
+                        raise Exception("missing resource")
+                    res_name = doc.name
+                    db_permissions += (perm_names, res_name)
+            print "permitted:",  check_permissions(permission_pairs, db_permissions)
+            func(self, *args, **kwargs)
         print "inside wrap"
         return wrapped_f
     """check if input format is ok"""
@@ -53,9 +77,14 @@ def acl_authorize(*permission_pairs):
     permission_pairs = new_permission_pairs
     return wrap
 
+class user():
+    _id = 4
 class request():
+    current_user = user()
+
     def __init__(self, db):
         self.db = db
+
     @acl_authorize(("read","write", "update", "egen stamdata"), ("read", "andres stamdata"))
     def post(self):
         print fun
@@ -94,3 +123,4 @@ class request():
 
         return handler_class
         '''
+
