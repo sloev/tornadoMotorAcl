@@ -43,6 +43,12 @@ class OthersDataHandler(Handler):
     def post(self):
         self.write("ok")
 
+class OwnAndOthersDataHandler(Handler):
+    @gen.coroutine
+    @acl_authorize(('read', 'own data'),("read", "others data"))
+    def post(self):
+        self.write("ok")
+
 class User:
     def __init__(self, name, _id):
         self.name = name
@@ -143,8 +149,14 @@ class TestTornadoMotorAcl:
         #assert handler.status == 200
 
     @gen_test
-    def test_that_admin_can_not_read_others_data(self):
+    def test_that_admin_can_read_others_data(self):
         handler = OthersDataHandler(self.db, self.admin_user)
+        yield handler.post()
+        assert handler.status == 200
+
+    @gen_test
+    def test_that_admin_can_read_others_and_own_data(self):
+        handler = OwnAndOthersDataHandler(self.db, self.admin_user)
         yield handler.post()
         assert handler.status == 200
 

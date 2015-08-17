@@ -8,8 +8,16 @@ class AclSyntaxError(Exception):
 class ValidException(Exception):
     pass
 
-def check_permissions(func_permissions, db_permissions):
-    return False not in [x in db_permissions for x in func_permissions]
+def check_permissions(permission_marks,func_permissions, db_permissions):
+    new_fp = []
+
+    for index, p in enumerate(func_permissions):
+        if p in db_permissions:
+            permission_marks[index] = 1
+    print "func not in db", new_fp, "func", func_permissions, "db", db_permissions
+    return permission_marks
+#    return False not in [x in db_permissions for x in func_permissions]
+    
 
 def acl_authorize(*permission_pairs):
     '''authorizes funcs in tornado requests using motor and mongodb
@@ -26,8 +34,9 @@ def acl_authorize(*permission_pairs):
 
     def wrap(func):
         def wrapped_f(self, *args, **kwargs):
-            print "[deco, self, args, kwargs]:", self, args, kwargs
-            #print "pp:",permission_pairs
+            print "[permissions, (acl):",permission_pairs
+            permission_marks = [0 for x in permission_pairs]
+
             #print "inside wrapped_f",  args, kwargs
             query = {}
             _id = self.current_user._id
@@ -42,8 +51,12 @@ def acl_authorize(*permission_pairs):
                         db_resource = p['resource']
                         db_permission_pairs = [(perm, db_resource) for perm in db_permissions]
                         #print permission_pairs, db_permissions
-                        valid = check_permissions(permission_pairs, db_permission_pairs)
-                        if valid:
+
+                        permission_marks = check_permissions(permission_marks, permission_pairs, db_permission_pairs)
+                        if 0 in permission_marks:
+                            pass
+                        else:
+                            #print "perm pairs  IN db", permission_pairs, db_permission_pairs
                             raise ValidException
                 self.set_status(403)
                 self.finish()
