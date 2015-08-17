@@ -55,7 +55,7 @@ class TestTornadoMotorAcl:
     def setup(self):
         print "-setup"
         self.client = MotorClient()
-        print "c, ", self.client
+        #print "c, ", self.client
         self.db = self.client['test_database']
         self.permissions = MotorCollection(self.db, 'acl_permissions')
         self.groups = MotorCollection(self.db, 'acl_groups')
@@ -106,8 +106,8 @@ class TestTornadoMotorAcl:
             ]])
         doc = yield self.groups.find_one({"name": "brugere"})
         members =doc['members']
-        print "members:", members
-        print "users", self.user_ids
+        #print "members:", members
+        #print "users", self.user_ids
 #        assert self.admin_user._id in members
         assert True
     @gen_test
@@ -117,24 +117,35 @@ class TestTornadoMotorAcl:
 
     @gen_test
     def test_setup(self):
-        print "[ test_setup ]"
         assert len(self.user_ids) == 2
         assert len(self.perm_ids) == 4
         assert len(self.res_ids) == 3
-        assert len(self.group_ids) == 2    
+        assert len(self.group_ids) == 2
 
     @gen_test
     def test_that_user_can_read_own_data(self):
-        print "[ test_acl_authorize ]"
         handler = OwnDataHandler(self.db, self.user_user)
         yield handler.post()
-        print "[handler]", handler.status, handler
+        assert handler.status == 200
         #assert handler.status == 200
 
     @gen_test
     def test_that_user_can_not_read_others_data(self):
-        print "[ test_acl_authorize ]"
         handler = OthersDataHandler(self.db, self.user_user)
-        f = yield handler.post()
-        print "[handler]", handler.status, handler
+        yield handler.post()
+        assert handler.status == 403
+
+    @gen_test
+    def test_that_admin_can_read_own_data(self):
+        handler = OwnDataHandler(self.db, self.admin_user)
+        yield handler.post()
+        assert handler.status == 200
+        #assert handler.status == 200
+
+    @gen_test
+    def test_that_admin_can_not_read_others_data(self):
+        handler = OthersDataHandler(self.db, self.admin_user)
+        yield handler.post()
+        assert handler.status == 200
+
 

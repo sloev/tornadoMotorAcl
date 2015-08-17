@@ -5,6 +5,8 @@ DB_PERMISSIONS = "acl_permissions"
 
 class AclSyntaxError(Exception):
     pass
+class ValidException(Exception):
+    pass
 
 def check_permissions(func_permissions, db_permissions):
     return False not in [x in db_permissions for x in func_permissions]
@@ -25,28 +27,30 @@ def acl_authorize(*permission_pairs):
     def wrap(func):
         def wrapped_f(self, *args, **kwargs):
             print "[deco, self, args, kwargs]:", self, args, kwargs
-            print "pp:",permission_pairs
-            print "inside wrapped_f",  args, kwargs
+            #print "pp:",permission_pairs
+            #print "inside wrapped_f",  args, kwargs
             query = {}
             _id = self.current_user._id
-            print "[validate]:user_id", _id
+            #print "[validate]:user_id", _id
             cursor = self.db[DB_GROUPS].find({"members":_id})
-            while (yield cursor.fetch_next):
-                group_permissions = cursor.next_object()['permissions']
-                for p in group_permissions:
-                    print "[validate]:group found:", p
-                    db_permissions = p['permissions']
-                    db_resource = p['resource']
-                    db_permission_pairs = [(perm, db_resource) for perm in db_permissions]
-                    print permission_pairs, db_permissions
-                    valid = check_permissions(permission_pairs, db_permission_pairs)
-                    print "[!valid:]", valid
-                    if not valid:
-                        self.set_status(403)
-                        self.finish()
-            self.set_status(200)
-            func(self, *args, **kwargs)
-        print "inside wrap"
+            try:
+                while (yield cursor.fetch_next):
+                    group_permissions = cursor.next_object()['permissions']
+                    for p in group_permissions:
+                        #print "[validate]:group found:", p
+                        db_permissions = p['permissions']
+                        db_resource = p['resource']
+                        db_permission_pairs = [(perm, db_resource) for perm in db_permissions]
+                        #print permission_pairs, db_permissions
+                        valid = check_permissions(permission_pairs, db_permission_pairs)
+                        if valid:
+                            raise ValidException
+                self.set_status(403)
+                self.finish()
+            except ValidException:
+                self.set_status(200)
+                func(self, *args, **kwargs)
+        #print "inside wrap"
         return wrapped_f
     """check if input format is ok"""
     new_permission_pairs = []
