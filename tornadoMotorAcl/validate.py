@@ -1,21 +1,4 @@
-
-def check_permissions(user, perm_name, res_name):
-    uid = user.uid
-    p_id = None
-    for p in permissions:
-        if p.name == perm_name:
-            p_id = p.permission_id
-    r_id = None
-    for r in resources:
-        if r.name == res_name:
-            r_id = r.resource_id
-    if r_id and p_id:
-        for g in groups:
-            if uid in g.members:
-                for p in g.permissions:
-                    if r_id == p.resource_id and p_id in p.permissions:
-                        return True
-    return False
+from bson.objectid import ObjectId
 DB_GROUPS = "acl_groups"
 DB_RESOURCES = "acl_resources"
 DB_PERMISSIONS = "acl_permissions"
@@ -41,28 +24,27 @@ def acl_authorize(*permission_pairs):
 
     def wrap(func):
         def wrapped_f(self, *args, **kwargs):
+            print "[deco, self, args, kwargs]:", self, args, kwargs
             print "pp:",permission_pairs
             print "inside wrapped_f",  args, kwargs
             query = {}
             _id = self.current_user._id
-
-            cursor = self.db[DB_PERMISSIONS].find({})
-            permission_dict = yield cursor.to_list(None)
-            print "perm dict", permission_dict
-
-            db_permissions = []
-            cursor = self.db[DB_GROUPS].find({"_id":_id})
+            print "[validate]:user_id", _id
+            cursor = self.db[DB_GROUPS].find({"members":_id})
             while (yield cursor.fetch_next):
-                group = cursor.next_object()
-                for p in group.permissions:
-                    #((1,2,3), 2)
-                    perm_names = [permission_dict[x] for x in p[0]]
-                    doc = yield self.db[DB_RESOURCES].find_one({"_id":p[1]})
-                    if not doc:
-                        raise Exception("missing resource")
-                    res_name = doc.name
-                    db_permissions += (perm_names, res_name)
-            print "permitted:",  check_permissions(permission_pairs, db_permissions)
+                group_permissions = cursor.next_object()['permissions']
+                for p in group_permissions:
+                    print "[validate]:group found:", p
+                    db_permissions = p['permissions']
+                    db_resource = p['resource']
+                    db_permission_pairs = [(perm, db_resource) for perm in db_permissions]
+                    print permission_pairs, db_permissions
+                    valid = check_permissions(permission_pairs, db_permission_pairs)
+                    print "[!valid:]", valid
+                    if not valid:
+                        self.set_status(403)
+                        self.finish()
+            self.set_status(200)
             func(self, *args, **kwargs)
         print "inside wrap"
         return wrapped_f
