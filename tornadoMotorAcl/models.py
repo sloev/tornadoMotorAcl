@@ -12,19 +12,20 @@ from schematics.models import Model
 from bson.objectid import ObjectId
 
 class Permission(Model): # for db
-    #_id = ObjectIdType(required=False)
+    _id = ObjectIdType(serialize_when_none=False)
     name = StringType()
 
 class Resource(Model): #for db
-    #_id = ObjectIdType(required=False)
+    _id = ObjectIdType(serialize_when_none=False)
     name = StringType()
 
 class ResourcePermissionPair(Model):#for embed in doc
+    _id = ObjectIdType(serialize_when_none=False)
     resource = StringType()
     permissions = ListType(StringType())
 
 class Group(Model):# for db
-    #_id = ObjectIdType(required=False)
+    _id = ObjectIdType(serialize_when_none=False)
     name = StringType()
     permissions = ListType(ModelType(ResourcePermissionPair))
     members = ListType(ObjectIdType())
