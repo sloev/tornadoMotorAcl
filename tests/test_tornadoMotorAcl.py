@@ -69,7 +69,7 @@ class TestTornadoMotorAcl:
         self.users = MotorCollection(self.db, 'users')
 
         self.user_ids = yield self.users.insert([{'name':'burger'},{'name':'paul'}])
-        self.user_ids = [str(x) for x in self.user_ids]
+        self.user_ids = [x for x in self.user_ids]
         self.admin_user = User("burger", self.user_ids[0])
         self.user_user = User("paul", self.user_ids[1])
         self.perm_ids = yield self.permissions.insert([x.to_primitive() for x in [

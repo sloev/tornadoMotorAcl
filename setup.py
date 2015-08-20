@@ -24,7 +24,7 @@ test_requirements = [
 
 setup(
     name='tornadoMotorAcl',
-    version='0.1.5',
+    version='0.1.6',
     description="acl for python, tornado and motor, with examples",
     long_description=readme + '\n\n' + history,
     author="johannes valbjørn",
